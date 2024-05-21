@@ -1,0 +1,6 @@
+framework module Pods_HomeWork18_HomeWork18UITests {
+  umbrella header "Pods-HomeWork18-HomeWork18UITests-umbrella.h"
+
+  export *
+  module * { export * }
+}
