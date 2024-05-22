@@ -3,8 +3,9 @@ import SnapKit
 import Alamofire
 
 class ViewController: UIViewController {
-
-    lazy var textField: UITextField = {
+    let apiKeys = ["X-API-KEY" : "5a1aa54a-2e6d-40b4-aa36-e6950cc441ee"]
+    
+    private lazy var textField: UITextField = {
         let text = UITextField()
         text.placeholder = "Какой фильм интересует"
         text.borderStyle = .roundedRect
@@ -57,34 +58,39 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        buttonURL.addTarget(self, action: #selector(chechSession(sender:)), for: .touchUpInside)
-        buttonAlamofire.addTarget(self, action: #selector(chechAlamofire(sender:)), for: .touchUpInside)
+        textField.delegate = self
+        
+        buttonURL.addTarget(self, action: #selector(sessionPressed(sender:)), for: .touchUpInside)
+        buttonAlamofire.addTarget(self, action: #selector(alamofirePressed(sender:)), for: .touchUpInside)
         
         view.addSubview(textField)
         view.addSubview(textView)
         view.addSubview(stackView)
         view.addSubview(activityIndicator)
         setupConstraints()
-
+        
     }
     
-    @objc func chechSession(sender: UIButton) {
+    private func textViewData() -> String {
+        let text = "https://kinopoiskapiunofficial.tech/api/v2.1/films/search-by-keyword?keyword=\(self.textField.text!.lowercased())"
+        return text
+    }
+    
+    @objc func sessionPressed(sender: UIButton) {
         if self.textField.text!.trimmingCharacters(in: .whitespaces).isEmpty == false {
-            let text = "https://kinopoiskapiunofficial.tech/api/v2.1/films/search-by-keyword?keyword=\(self.textField.text!.lowercased())"
-            sessionPressed(text: text)
+            let text = textViewData()
+            sessionProcess(text: text)
         }
     }
     
-    @objc func chechAlamofire(sender: UIButton) {
+    @objc func alamofirePressed(sender: UIButton) {
         if self.textField.text!.trimmingCharacters(in: .whitespaces).isEmpty == false {
-            let text = "https://kinopoiskapiunofficial.tech/api/v2.1/films/search-by-keyword?keyword=\(self.textField.text!.lowercased())"
-            alamofirePressed(text: text)
+            let text = textViewData()
+            alamofireProcess(text: text)
         }
     }
     
-    
-    
-    private func sessionPressed(text: String){
+    private func sessionProcess(text: String){
         self.activityIndicator.startAnimating()
         let queue = DispatchQueue.global(qos: .background)
         queue.async {
@@ -93,7 +99,7 @@ class ViewController: UIViewController {
             let url = URL(string: text)!
             var request = URLRequest(url: url)
             request.httpMethod = "GET"
-            request.allHTTPHeaderFields =  ["X-API-KEY" : "5a1aa54a-2e6d-40b4-aa36-e6950cc441ee"]
+            request.allHTTPHeaderFields = self.apiKeys
             let task = URLSession.shared.dataTask(with: request){ (data, response, error) in
                 guard error == nil else {
                     print("При запросе возникла ошибка")
@@ -104,13 +110,9 @@ class ViewController: UIViewController {
                     DispatchQueue.main.async { [weak self] in
                         guard let self = self else {return}
                         self.activityIndicator.stopAnimating()
-                        let counts = myData.films.count
-                        if counts > 0 {
-                            var description = ""
-                            for i in 0...counts - 1 {
-                                description += "Название фильма: \(myData.films[i].nameRu.uppercased())" + " (\(myData.films[i].nameEn.uppercased()))" + "\n" + "Тип фильма: \(myData.films[i].type)" + "\n" + "Год выпуска: \(myData.films[i].year)" + "\n" + "Описание:  \(myData.films[i].description)"  + "\n" + "Рейтинг: \(myData.films[i].rating)" + "\n" + "\n"
-                            }
-                            self.textView.text = description
+                        let maxCount = myData.films.count
+                        if maxCount > 0 {
+                            self.textView.text = showData(maxCount: maxCount, myData: myData)
                         }else{
                             print("Фильм не найден")
                         }
@@ -124,38 +126,39 @@ class ViewController: UIViewController {
     
     }
     
-    private func alamofirePressed(text: String){
+    private func alamofireProcess(text: String){
         self.activityIndicator.startAnimating()
+        let film = text
         let queue = DispatchQueue.global(qos: .background)
         queue.async {
             sleep(1)
-            NetWorkWithAlamofire.shared.fetchData(text: "https://kinopoiskapiunofficial.tech/api/v2.1/films/search-by-keyword?keyword=\(self.textField.text!.lowercased())") { result in
+            NetWorkWithAlamofire.shared.fetchData(text: film, apiKeys: self.apiKeys, activityIndicator: self.activityIndicator) { result in
                 switch result{
-                    
                 case .success(let filmResults):
                     let myData = filmResults
                     DispatchQueue.main.async { [weak self] in
                         guard let self = self else {return}
                         self.activityIndicator.stopAnimating()
-                        let counts = myData.films.count
-                        if counts > 0 {
-                            var description = ""
-                            for i in 0...counts - 1 {
-                                description += "Название фильма: \(myData.films[i].nameRu.uppercased())" + " (\(myData.films[i].nameEn.uppercased()))" + "\n" + "Тип фильма: \(myData.films[i].type)" + "\n" + "Год выпуска: \(myData.films[i].year)" + "\n" + "Описание:  \(myData.films[i].description)"  + "\n" + "Рейтинг: \(myData.films[i].rating)" + "\n" + "\n"
-                            }
-                            self.textView.text = description
-                        }else{
-                            print("Фильм не найден")
+                        let maxCount = myData.films.count
+                        if maxCount > 0 {
+                            self.textView.text = showData(maxCount: maxCount, myData: myData)
                         }
                     }
                 case .failure(let error):
-                    print(error)
+                    self.activityIndicator.stopAnimating()
+                    return
                 }
             }
         }
-        
     }
     
+    private func showData(maxCount : Int, myData: Quere) -> String {
+        var description = ""
+        for i in 0...maxCount - 1 {
+            description += "Название фильма: \(myData.films[i].nameRu.uppercased())" + " (\(myData.films[i].nameEn.uppercased()))" + "\n" + "Тип фильма: \(myData.films[i].type)" + "\n" + "Год выпуска: \(myData.films[i].year)" + "\n" + "Описание:  \(myData.films[i].description)"  + "\n" + "Рейтинг: \(myData.films[i].rating)" + "\n" + "\n"
+        }
+        return description
+    }
     
     private func setupConstraints() {
         textField.snp.makeConstraints { make in
@@ -176,5 +179,9 @@ class ViewController: UIViewController {
             make.centerYWithinMargins.equalTo(self.view)
         }
     }
+    
 }
 
+extension ViewController: UITextFieldDelegate {
+    
+}
