@@ -72,7 +72,7 @@ class ViewController: UIViewController {
     }
     
     private func textViewData() -> String {
-        let text = "https://kinopoiskapiunofficial.tech/api/v2.1/films/search-by-keyword?keyword=\(self.textField.text!.lowercased())"
+        let text = "https://kinopoiskapiunofficial.tech/api/v2.1/films/search-by-keyword?keyword=\(self.textField.text!.lowercased().addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed) ?? "")"
         return text
     }
     
@@ -92,9 +92,6 @@ class ViewController: UIViewController {
     
     private func sessionProcess(text: String){
         self.activityIndicator.startAnimating()
-        let queue = DispatchQueue.global(qos: .background)
-        queue.async {
-            sleep(1)
             var myData = Quere()
             let url = URL(string: text)!
             var request = URLRequest(url: url)
@@ -103,6 +100,9 @@ class ViewController: UIViewController {
             let task = URLSession.shared.dataTask(with: request){ (data, response, error) in
                 guard error == nil else {
                     print("При запросе возникла ошибка")
+                    DispatchQueue.main.async { [weak self] in
+                        self?.activityIndicator.stopAnimating()
+                    }
                     return
                 }
                 do {
@@ -118,20 +118,21 @@ class ViewController: UIViewController {
                         }
                     }
                 }catch{
+                    print("Проблема с запросом/декодом")
                     print(error)
+                    DispatchQueue.main.async { [weak self] in
+                        self?.activityIndicator.stopAnimating()
+                    }
                 }
             }
             task.resume()
-        }
+//        }
     
     }
     
     private func alamofireProcess(text: String){
         self.activityIndicator.startAnimating()
         let film = text
-        let queue = DispatchQueue.global(qos: .background)
-        queue.async {
-            sleep(1)
             NetWorkWithAlamofire.shared.fetchData(text: film, apiKeys: self.apiKeys, activityIndicator: self.activityIndicator) { result in
                 switch result{
                 case .success(let filmResults):
@@ -144,20 +145,33 @@ class ViewController: UIViewController {
                             self.textView.text = showData(maxCount: maxCount, myData: myData)
                         }
                     }
-                case .failure(let error):
+                case .failure(_):
                     self.activityIndicator.stopAnimating()
                     return
                 }
             }
-        }
+
     }
     
     private func showData(maxCount : Int, myData: Quere) -> String {
         var description = ""
         for i in 0...maxCount - 1 {
-            description += "Название фильма: \(myData.films[i].nameRu.uppercased())" + " (\(myData.films[i].nameEn.uppercased()))" + "\n" + "Тип фильма: \(myData.films[i].type)" + "\n" + "Год выпуска: \(myData.films[i].year)" + "\n" + "Описание:  \(myData.films[i].description)"  + "\n" + "Рейтинг: \(myData.films[i].rating)" + "\n" + "\n"
-        }
+            var ruName = unwrap(string: myData.films[i].nameRu?.uppercased())
+            var enName = unwrap(string: myData.films[i].nameEn?.uppercased())
+            var type = myData.films[i].type
+            var year = myData.films[i].year
+            var desc = unwrap(string: myData.films[i].description)
+            var rating = myData.films[i].rating
+            
+            description += "Название фильма: \(ruName)" + " (\(enName)" + "\n" + "Тип фильма: \(type)" + "\n" + "Год выпуска: \(year)" + "\n" + "Описание: \(desc))"  + "\n" + "Рейтинг: \(rating)" + "\n" + "\n"
+            }
+        
         return description
+    }
+    
+    private func unwrap(string : String?) -> String{
+        guard let string = string else {return ""}
+        return string
     }
     
     private func setupConstraints() {

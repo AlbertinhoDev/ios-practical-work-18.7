@@ -24,7 +24,6 @@ class NetWorkWithAlamofire {
                 let decoder = JSONDecoder()
                 decoder.keyDecodingStrategy = .convertFromSnakeCase
                 guard let filmResults = try? decoder.decode(Quere.self, from: data) else {
-                    print("Фильм не найден")
                     activityIndicator.stopAnimating()
                     return
                 }

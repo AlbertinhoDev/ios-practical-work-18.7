@@ -7,12 +7,11 @@ struct Quere: Decodable {
 }
 
 struct Films: Decodable {
-    var nameRu: String = ""
-    var nameEn: String = ""
-    var type: String = ""
-    var year: String = ""
-    var description: String = ""
-    //var filmLength: String = ""
-    var rating: String = ""
+    var nameRu: String?
+    var nameEn: String?
+    var type: String
+    var year: String
+    var description: String?
+    var rating: String
 }
 
