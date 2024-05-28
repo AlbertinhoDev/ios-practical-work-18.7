@@ -197,5 +197,7 @@ class ViewController: UIViewController {
 }
 
 extension ViewController: UITextFieldDelegate {
-    
+    func textFieldDidEndEditing(_ textField: UITextField) {
+        textField.resignFirstResponder()
+    }
 }
